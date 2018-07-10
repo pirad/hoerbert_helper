@@ -51,28 +51,34 @@ function prepend_files {
     done
 }
 
-function convert_one_source {
-    source_path=$(zenity --file-selection --directory --title="Wähle das Quell-Verzeichnis aus.")
-
+function convert_all_files {
     # convert to wav named from 0
     i=0
     SAVEIFS=$IFS
     IFS=$(echo -en "\n\b")
-    for FILE in $(ls -v "$source_path")
+    file_list=$(ls -v "$source_path")
+    number_of_files=$(echo "$file_list" | wc -l)
+    for FILE in $file_list
     do
 	if [[ -f "$source_path/$FILE" && "$source_path/$FILE" =~ ^.*\.(wav|WAV|mp3|MP3)$ ]] 
 	then
+	   echo "# Konvertiere $FILE"
 	   sox --buffer 131072 --multi-threaded --no-glob "$source_path/$FILE" --clobber -r 32000 -b 16 -e signed-integer --no-glob $tmp_path/$i.WAV remix - gain -n -1.5 bass +1 loudness -1 pad 0 0 dither
 	   ((i++))
+	   echo $((100 * i / number_of_files))
+	   sleep 2
        fi
     done
     IFS=$SAVEIFS
 
+}
+
+function convert_one_source {
+    source_path=$(zenity --file-selection --directory --title="Wähle das Quell-Verzeichnis aus.")
+
+    convert_all_files | zenity --progress --title="Konvertiere" --text="Konvertiere" --percentage=0 --auto-close --auto-kill --no-cancel
 
     target_path=$(zenity --file-selection --directory --title="Wähle das Ziel-Verzeichnis aus.")
-
-
-
 
     if [ -f "$target_path"/0.WAV ] 
     then
