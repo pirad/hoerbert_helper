@@ -8,23 +8,24 @@ then
     mkdir "$tmp_path"
 fi
 
+source_path=$(zenity --file-selection --directory --title="Wähle das Quell-Verzeichnis aus.")
 
 # convert to wav named from 0
 i=0
 SAVEIFS=$IFS
 IFS=$(echo -en "\n\b")
-for FILE in $(ls -v)
+for FILE in $(ls -v "$source_path")
 do
-    if [[ -f "$FILE" && "$FILE" =~ ^.*\.(wav|WAV|mp3|MP3)$ ]] 
+    if [[ -f "$source_path/$FILE" && "$source_path/$FILE" =~ ^.*\.(wav|WAV|mp3|MP3)$ ]] 
     then
-       sox --buffer 131072 --multi-threaded --no-glob "$FILE" --clobber -r 32000 -b 16 -e signed-integer --no-glob $tmp_path/$i.WAV remix - gain -n -1.5 bass +1 loudness -1 pad 0 0 dither
+       sox --buffer 131072 --multi-threaded --no-glob "$source_path/$FILE" --clobber -r 32000 -b 16 -e signed-integer --no-glob $tmp_path/$i.WAV remix - gain -n -1.5 bass +1 loudness -1 pad 0 0 dither
        ((i++))
    fi
 done
 IFS=$SAVEIFS
 
 
-target_path=$(zenity --file-selection --directory --text="Wähle das Verzeichnis auf der SD-Karte aus, auf die die Dateien gespielt werden sollen")
+target_path=$(zenity --file-selection --directory --title="Wähle das Verzeichnis auf der SD-Karte aus, auf die die Dateien gespielt werden sollen")
 
 function move_file {
 # moves file in first argument to directory in second argument and adds third argument to the number in the name
