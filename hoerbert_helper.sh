@@ -48,27 +48,6 @@ function prepend_files {
     done
 }
 
-function convert_all_files {
-    # convert to wav named from 0
-    i=0
-    SAVEIFS=$IFS
-    IFS=$(echo -en "\n\b")
-    file_list=$(ls -v "$source_path")
-    number_of_files=$(echo "$file_list" | wc -l)
-    for FILE in $file_list
-    do
-	if [[ -f "$source_path/$FILE" && "$source_path/$FILE" =~ ^.*\.(wav|WAV|mp3|MP3)$ ]] 
-	then
-	   echo "# Konvertiere $FILE"
-	   sox --buffer 131072 --multi-threaded --no-glob "$source_path/$FILE" --clobber -r 32000 -b 16 -e signed-integer --no-glob $tmp_path/$i.WAV remix - gain -n -1.5 bass +1 loudness -1 pad 0 0 dither
-	   ((i++))
-	   echo $((100 * i / number_of_files))
-       fi
-    done
-    IFS=$SAVEIFS
-
-}
-
 function my_normalizer {
     file=$1
     tmp=$(sox "$file" -n stats 3>&1 1>&2 2>&3)
@@ -83,6 +62,28 @@ function my_normalizer {
 	sox "$file" "$tmpfile" compand 0.3,0.8 6:-50,-$(( 50 - (2*$diff) )) && \
 	    rm "$file" && mv "$tmpfile" "$file"
     fi
+}
+
+function convert_all_files {
+    # convert to wav named from 0
+    i=0
+    SAVEIFS=$IFS
+    IFS=$(echo -en "\n\b")
+    file_list=$(ls -v "$source_path")
+    number_of_files=$(echo "$file_list" | wc -l)
+    for FILE in $file_list
+    do
+	if [[ -f "$source_path/$FILE" && "$source_path/$FILE" =~ ^.*\.(wav|WAV|mp3|MP3)$ ]] 
+	then
+	   echo "# Konvertiere $FILE"
+	   sox --buffer 131072 --multi-threaded --no-glob "$source_path/$FILE" --clobber -r 32000 -b 16 -e signed-integer --no-glob $tmp_path/$i.WAV remix - gain -n -1.5 bass +1 loudness -1 pad 0 0 dither
+	   my_normalizer "$tmp_path/$i.WAV"
+	   ((i++))
+	   echo $((100 * i / number_of_files))
+       fi
+    done
+    IFS=$SAVEIFS
+
 }
 
 function convert_one_source {
