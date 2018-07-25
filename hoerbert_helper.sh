@@ -1,12 +1,9 @@
 #!/bin/bash
 
 # temporary path where the wav files will be created
-tmp_path="/dev/shm/hoerbert.d/"
+# TODO use mktemp
+tmp_path=$(mktemp -d)
 
-if [ ! -d "$tmp_path" ] 
-then
-    mkdir "$tmp_path"
-fi
 
 # functions TODO move to extra file
 function move_file {
@@ -71,6 +68,22 @@ function convert_all_files {
     done
     IFS=$SAVEIFS
 
+}
+
+function my_normalizer {
+    file=$1
+    tmp=$(sox "$file" -n stats 3>&1 1>&2 2>&3)
+    tmp=${tmp#*RMS lev dB}
+    rms_lev=${tmp%%.*RMS*}
+    diff=$(( -$rms_lev - 17 )) # 17 seems to be normal value on sd card at delivery
+    tmpfile=$(mktemp -suffix=.WAV)
+    threshold=3
+    if [[ $diff -ge $threshold  && $diff -lt 12 ]] 
+    then
+	zenity --question --text="Die Datei $file ist um $diff dB leiser als empfohlen. Wollen Sie sie lauter machen (Methode: DRC)?"
+	sox "$file" "$tmpfile" compand 0.3,0.8 6:-50,-$(( 50 - (2*$diff) )) && \
+	    rm "$file" && mv "$tmpfile" "$file"
+    fi
 }
 
 function convert_one_source {
