@@ -66,7 +66,6 @@ function convert_all_files {
 	   sox --buffer 131072 --multi-threaded --no-glob "$source_path/$FILE" --clobber -r 32000 -b 16 -e signed-integer --no-glob $tmp_path/$i.WAV remix - gain -n -1.5 bass +1 loudness -1 pad 0 0 dither
 	   ((i++))
 	   echo $((100 * i / number_of_files))
-	   sleep 2
        fi
     done
     IFS=$SAVEIFS
@@ -74,11 +73,11 @@ function convert_all_files {
 }
 
 function convert_one_source {
-    source_path=$(zenity --file-selection --directory --title="Wähle das Quell-Verzeichnis aus.")
+    source_path=$(zenity --file-selection --directory --title="Wählen Sie das Quell-Verzeichnis aus.")
 
     convert_all_files | zenity --progress --title="Konvertiere" --text="Konvertiere" --percentage=0 --auto-close --auto-kill --no-cancel
 
-    target_path=$(zenity --file-selection --directory --title="Wähle das Ziel-Verzeichnis aus.")
+    target_path=$(zenity --file-selection --directory --title="Wählen Sie das Ziel-Verzeichnis aus.")
 
     if [ -f "$target_path"/0.WAV ] 
     then
