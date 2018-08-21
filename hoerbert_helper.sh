@@ -54,15 +54,34 @@ function my_normalizer {
     tmp=${tmp#*RMS lev dB}
     rms_lev=${tmp%%.*RMS*}
     diff=$(( -$rms_lev - 17 )) # 17 seems to be normal value on sd card at delivery
-    tmpfile=$(mktemp -suffix=.WAV)
+    tmpfile=$(mktemp --suffix=.WAV)
     threshold=3
     if [[ $diff -ge $threshold  && $diff -lt 12 ]] 
     then
-	zenity --question --text="Die Datei $file ist um $diff dB leiser als empfohlen. Wollen Sie sie lauter machen (Methode: DRC)?"
 	sox "$file" "$tmpfile" compand 0.3,0.8 6:-50,-$(( 50 - (2*$diff) )) && \
 	    rm "$file" && mv "$tmpfile" "$file"
     fi
 }
+
+function count_files_to_normalize {
+    i=0
+    number_of_files_to_normalize=0
+    for FILE in $tmp_path/*.WAV
+    do
+	tmp=$(sox "$FILE" -n stats 3>&1 1>&2 2>&3)
+	tmp=${tmp#*RMS lev dB}
+	rms_lev=${tmp%%.*RMS*}
+	diff=$(( -$rms_lev - 17 )) # 17 seems to be normal value on sd card at delivery
+	threshold=3
+	if [[ $diff -ge $threshold  && $diff -lt 12 ]] 
+	then
+	    ((number_of_files_to_normalize++))
+	fi
+	((i++))
+    done
+    echo $number_of_files_to_normalize
+}
+
 
 function convert_all_files {
     # convert to wav named from 0
@@ -77,21 +96,43 @@ function convert_all_files {
 	then
 	   echo "# Konvertiere $FILE"
 	   sox --buffer 131072 --multi-threaded --no-glob "$source_path/$FILE" --clobber -r 32000 -b 16 -e signed-integer --no-glob $tmp_path/$i.WAV remix - gain -n -1.5 bass +1 loudness -1 pad 0 0 dither
-	   my_normalizer "$tmp_path/$i.WAV"
 	   ((i++))
 	   echo $((100 * i / number_of_files))
        fi
     done
     IFS=$SAVEIFS
 
+    number_of_files_to_normalize=$(count_files_to_normalize)
+    i=0
+    set -x
+    if [[ $number_of_files_to_normalize -gt 0 ]] && $(zenity --question --text "$number_of_files_to_normalize Dateien sind leiser als empfohlen. Wollen Sie sie lauter machen (Methode: DRC)?")
+    then
+	for TMPFILE in $tmp_path/*.WAV
+	do 
+	    echo "# Normalisiere $TMPFILE"
+	    my_normalizer "$TMPFILE"
+	    ((i++))
+	    echo $((100 * i / number_of_files_to_normalize))
+	done
+    fi
+
+    set +x
 }
 
 function convert_one_source {
     source_path=$(zenity --file-selection --directory --title="Wählen Sie das Quell-Verzeichnis aus.")
+    if [ -z $source_path ] 
+    then
+	exit 1
+    fi
 
     convert_all_files | zenity --progress --title="Konvertiere" --text="Konvertiere" --percentage=0 --auto-close --auto-kill --no-cancel
 
     target_path=$(zenity --file-selection --directory --title="Wählen Sie das Ziel-Verzeichnis aus.")
+    if [ -z $target_path ] 
+    then
+	exit 1
+    fi
 
     if [ -f "$target_path"/0.WAV ] 
     then
