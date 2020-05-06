@@ -1,3 +1,5 @@
+look over to https://github.com/pirad/hoerbert-tool for a more user friendly GUI
+
 # hoerbert_helper
 My bash script for filling the sd card, to run in the Hörbert hardware (see https://de-de.hoerbert.com/).
 
